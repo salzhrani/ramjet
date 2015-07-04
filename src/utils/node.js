@@ -1,12 +1,13 @@
 import styleKeys from './styleKeys';
 import { svg, svgns } from './svg';
 
-export function cloneNode ( node ) {
+export function cloneNode ( node, blackList ) {
 	const clone = node.cloneNode();
 
 	let style;
 	let len;
 	let i;
+	let j;
 
 	let attr;
 
@@ -16,23 +17,38 @@ export function cloneNode ( node ) {
 		styleKeys.forEach( function ( prop ) {
 			clone.style[ prop ] = style[ prop ];
 		});
+		if (blackList && blackList.length) {
+			for ( j = blackList.length - 1; j >= 0; j--) {
+				clone.removeAttribute(blackList[j]);
+			}
+		}
 
 		len = node.childNodes.length;
-		for ( i = 0; i < len; i += 1 ) {
-			clone.appendChild( cloneNode( node.childNodes[i] ) );
+		if (blackList && blackList.length) {
+			for ( i = 0; i < len; i += 1 ) {
+				var newNode = cloneNode( node.childNodes[i] );
+				for ( j = blackList.length - 1; j >= 0; j--) {
+					newNode.removeAttribute(blackList[j]);
+				}
+				clone.appendChild( newNode );
+			}
+		} else {
+			for ( i = 0; i < len; i += 1 ) {
+				clone.appendChild( cloneNode( node.childNodes[i] ) );
+			}
 		}
 	}
 
 	return clone;
 }
 
-export function wrapNode ( node ) {
+export function wrapNode ( node, blackList ) {
 	const isSvg = node.namespaceURI === svgns;
 
 	const { left, right, top, bottom } = node.getBoundingClientRect();
 	const style = window.getComputedStyle( node );
 
-	const clone = cloneNode( node );
+	const clone = cloneNode( node, blackList );
 
 	const wrapper = {
 		node, clone, isSvg,

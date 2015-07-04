@@ -18,8 +18,6 @@
             	});
             }
 
-            var utils_styleKeys = styleKeys;
-
             var svgns = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(svgns, 'svg');
 
@@ -37,32 +35,48 @@
             	appendedSvg = true;
             }
 
-            function cloneNode(node) {
+            function cloneNode(node, blackList) {
             	var clone = node.cloneNode();
 
             	var style = undefined;
             	var len = undefined;
             	var i = undefined;
+            	var j = undefined;
 
             	var attr = undefined;
 
             	if (node.nodeType === 1) {
             		style = window.getComputedStyle(node);
 
-            		utils_styleKeys.forEach(function (prop) {
+            		styleKeys.forEach(function (prop) {
             			clone.style[prop] = style[prop];
             		});
+            		if (blackList && blackList.length) {
+            			for (j = blackList.length - 1; j >= 0; j--) {
+            				clone.removeAttribute(blackList[j]);
+            			}
+            		}
 
             		len = node.childNodes.length;
-            		for (i = 0; i < len; i += 1) {
-            			clone.appendChild(cloneNode(node.childNodes[i]));
+            		if (blackList && blackList.length) {
+            			for (i = 0; i < len; i += 1) {
+            				var newNode = cloneNode(node.childNodes[i]);
+            				for (j = blackList.length - 1; j >= 0; j--) {
+            					newNode.removeAttribute(blackList[j]);
+            				}
+            				clone.appendChild(newNode);
+            			}
+            		} else {
+            			for (i = 0; i < len; i += 1) {
+            				clone.appendChild(cloneNode(node.childNodes[i]));
+            			}
             		}
             	}
 
             	return clone;
             }
 
-            function wrapNode(node) {
+            function wrapNode(node, blackList) {
             	var isSvg = node.namespaceURI === svgns;
 
             	var _node$getBoundingClientRect = node.getBoundingClientRect();
@@ -74,7 +88,7 @@
 
             	var style = window.getComputedStyle(node);
 
-            	var clone = cloneNode(node);
+            	var clone = cloneNode(node, blackList);
 
             	var wrapper = {
             		node: node, clone: clone, isSvg: isSvg,
@@ -128,15 +142,11 @@
             	}
             }
 
-            var utils_getTransform = getTransform;
-
             function getTransform(isSvg, cx, cy, dx, dy, dsx, dsy, t) {
             	var transform = isSvg ? "translate(" + cx + " " + cy + ") scale(" + (1 + t * dsx) + " " + (1 + t * dsy) + ") translate(" + -cx + " " + -cy + ") translate(" + t * dx + " " + t * dy + ")" : "translate(" + t * dx + "px," + t * dy + "px) scale(" + (1 + t * dsx) + "," + (1 + t * dsy) + ")";
 
             	return transform;
             }
-
-            var utils_getBorderRadius = getBorderRadius;
 
             function getBorderRadius(a, b, dsx, dsy, t) {
             	var sx = 1 + t * dsx;
@@ -148,7 +158,7 @@
             		var rx = (from + t * (to - from)) / sx;
             		var ry = (from + t * (to - from)) / sy;
 
-            		return "" + rx + "px " + ry + "px";
+            		return rx + "px " + ry + "px";
             	});
             }
 
@@ -176,12 +186,10 @@
                         return setTimeout(fn, 16);
             };
 
-            var utils_rAF = rAF;
+            function TimerTransformer___classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-            function transformers_TimerTransformer___classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
-
-            var transformers_TimerTransformer__TimerTransformer = function TimerTransformer(from, to, options) {
-            	transformers_TimerTransformer___classCallCheck(this, transformers_TimerTransformer__TimerTransformer);
+            var TimerTransformer__TimerTransformer = function TimerTransformer(from, to, options) {
+            	TimerTransformer___classCallCheck(this, TimerTransformer__TimerTransformer);
 
             	var dx = to.cx - from.cx;
             	var dy = to.cy - from.cy;
@@ -218,17 +226,17 @@
             		to.clone.style.opacity = t;
 
             		// border radius
-            		var borderRadius = utils_getBorderRadius(from.borderRadius, to.borderRadius, t);
-            		from.clone.style.borderTopLeftRadius = to.clone.style.borderTopLeftRadius = borderRadius[0];
-            		from.clone.style.borderTopRightRadius = to.clone.style.borderTopRightRadius = borderRadius[1];
-            		from.clone.style.borderBottomRightRadius = to.clone.style.borderBottomRightRadius = borderRadius[2];
-            		from.clone.style.borderBottomLeftRadius = to.clone.style.borderBottomLeftRadius = borderRadius[3];
+            		var fromBorderRadius = getBorderRadius(from.borderRadius, to.borderRadius, dsxf, dsyf, t);
+            		var toBorderRadius = getBorderRadius(to.borderRadius, from.borderRadius, dsxt, dsyt, 1 - t);
+
+            		applyBorderRadius(from.clone, fromBorderRadius);
+            		applyBorderRadius(to.clone, toBorderRadius);
 
             		var cx = from.cx + dx * t;
             		var cy = from.cy + dy * t;
 
-            		var fromTransform = utils_getTransform(from.isSvg, cx, cy, dx, dy, dsxf, dsyf, t) + ' ' + from.transform;
-            		var toTransform = utils_getTransform(to.isSvg, cx, cy, -dx, -dy, dsxt, dsyt, 1 - t) + ' ' + to.transform;
+            		var fromTransform = getTransform(from.isSvg, cx, cy, dx, dy, dsxf, dsyf, t) + ' ' + from.transform;
+            		var toTransform = getTransform(to.isSvg, cx, cy, -dx, -dy, dsxt, dsyt, 1 - t) + ' ' + to.transform;
 
             		if (from.isSvg) {
             			from.clone.setAttribute('transform', fromTransform);
@@ -242,13 +250,20 @@
             			to.clone.style.transform = to.clone.style.webkitTransform = to.clone.style.msTransform = toTransform;
             		}
 
-            		utils_rAF(tick);
+            		rAF(tick);
             	}
 
             	tick();
             };
 
-            var transformers_TimerTransformer = transformers_TimerTransformer__TimerTransformer;
+            var TimerTransformer__default = TimerTransformer__TimerTransformer;
+
+            function applyBorderRadius(node, borderRadius) {
+            	node.style.borderTopLeftRadius = borderRadius[0];
+            	node.style.borderTopRightRadius = borderRadius[1];
+            	node.style.borderBottomRightRadius = borderRadius[2];
+            	node.style.borderBottomLeftRadius = borderRadius[3];
+            }
 
             var div = document.createElement('div');
 
@@ -298,10 +313,10 @@
             	keyframesSupported = false;
             }
 
-            function transformers_KeyframeTransformer___classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+            function KeyframeTransformer___classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-            var transformers_KeyframeTransformer__KeyframeTransformer = function KeyframeTransformer(from, to, options) {
-            	transformers_KeyframeTransformer___classCallCheck(this, transformers_KeyframeTransformer__KeyframeTransformer);
+            var KeyframeTransformer__KeyframeTransformer = function KeyframeTransformer(from, to, options) {
+            	KeyframeTransformer___classCallCheck(this, KeyframeTransformer__KeyframeTransformer);
 
             	var _getKeyframes = getKeyframes(from, to, options);
 
@@ -311,17 +326,17 @@
             	var fromId = '_' + ~ ~(Math.random() * 1000000);
             	var toId = '_' + ~ ~(Math.random() * 1000000);
 
-            	var css = '' + KEYFRAMES + ' ' + fromId + ' { ' + fromKeyframes + ' } ' + KEYFRAMES + ' ' + toId + ' { ' + toKeyframes + ' }';
+            	var css = KEYFRAMES + ' ' + fromId + ' { ' + fromKeyframes + ' } ' + KEYFRAMES + ' ' + toId + ' { ' + toKeyframes + ' }';
             	var dispose = addCss(css);
 
             	from.clone.style[ANIMATION_DIRECTION] = 'alternate';
-            	from.clone.style[ANIMATION_DURATION] = '' + options.duration / 1000 + 's';
+            	from.clone.style[ANIMATION_DURATION] = options.duration / 1000 + 's';
             	from.clone.style[ANIMATION_ITERATION_COUNT] = 1;
             	from.clone.style[ANIMATION_NAME] = fromId;
             	from.clone.style[ANIMATION_TIMING_FUNCTION] = 'linear';
 
             	to.clone.style[ANIMATION_DIRECTION] = 'alternate';
-            	to.clone.style[ANIMATION_DURATION] = '' + options.duration / 1000 + 's';
+            	to.clone.style[ANIMATION_DURATION] = options.duration / 1000 + 's';
             	to.clone.style[ANIMATION_ITERATION_COUNT] = 1;
             	to.clone.style[ANIMATION_NAME] = toId;
             	to.clone.style[ANIMATION_TIMING_FUNCTION] = 'linear';
@@ -351,7 +366,7 @@
             	});
             };
 
-            var transformers_KeyframeTransformer = transformers_KeyframeTransformer__KeyframeTransformer;
+            var KeyframeTransformer__default = KeyframeTransformer__KeyframeTransformer;
 
             function addCss(css) {
             	var styleElement = document.createElement('style');
@@ -398,11 +413,11 @@
             		var cx = from.cx + dx * t;
             		var cy = from.cy + dy * t;
 
-            		var fromBorderRadius = utils_getBorderRadius(from.borderRadius, to.borderRadius, dsxf, dsyf, t);
-            		var toBorderRadius = utils_getBorderRadius(to.borderRadius, from.borderRadius, dsxt, dsyt, 1 - t);
+            		var fromBorderRadius = getBorderRadius(from.borderRadius, to.borderRadius, dsxf, dsyf, t);
+            		var toBorderRadius = getBorderRadius(to.borderRadius, from.borderRadius, dsxt, dsyt, 1 - t);
 
-            		var fromTransform = utils_getTransform(false, cx, cy, dx, dy, dsxf, dsyf, t) + ' ' + from.transform;
-            		var toTransform = utils_getTransform(false, cx, cy, -dx, -dy, dsxt, dsyt, 1 - t) + ' ' + to.transform;
+            		var fromTransform = getTransform(false, cx, cy, dx, dy, dsxf, dsyf, t) + ' ' + from.transform;
+            		var toTransform = getTransform(false, cx, cy, -dx, -dy, dsxt, dsyt, 1 - t) + ' ' + to.transform;
 
             		fromKeyframes.push('\n\t\t\t' + pc + '% {\n\t\t\t\topacity: ' + (1 - t) + ';\n\t\t\t\tborder-top-left-radius: ' + fromBorderRadius[0] + ';\n\t\t\t\tborder-top-right-radius: ' + fromBorderRadius[1] + ';\n\t\t\t\tborder-bottom-right-radius: ' + fromBorderRadius[2] + ';\n\t\t\t\tborder-bottom-left-radius: ' + fromBorderRadius[3] + ';\n\t\t\t\t' + TRANSFORM + ': ' + fromTransform + ';\n\t\t\t}');
 
@@ -436,17 +451,17 @@
             			options.duration = 400;
             		}
 
-            		var from = wrapNode(fromNode);
-            		var to = wrapNode(toNode);
+            		var from = wrapNode(fromNode, options.blackList);
+            		var to = wrapNode(toNode, options.blackList);
 
             		if (from.isSvg || to.isSvg && !appendedSvg) {
             			appendSvg();
             		}
 
             		if (!keyframesSupported || options.useTimer || from.isSvg || to.isSvg) {
-            			return new transformers_TimerTransformer(from, to, options);
+            			return new TimerTransformer__default(from, to, options);
             		} else {
-            			return new transformers_KeyframeTransformer(from, to, options);
+            			return new KeyframeTransformer__default(from, to, options);
             		}
             	},
 

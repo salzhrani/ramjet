@@ -15,8 +15,8 @@ export default {
 			options.duration = 400;
 		}
 
-		const from = wrapNode( fromNode );
-		const to = wrapNode( toNode );
+		const from = wrapNode( fromNode, options.blackList );
+		const to = wrapNode( toNode, options.blackList );
 
 		if ( from.isSvg || to.isSvg && !appendedSvg ) {
 			appendSvg();
