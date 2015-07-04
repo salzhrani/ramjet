@@ -41,7 +41,6 @@
             	var style = undefined;
             	var len = undefined;
             	var i = undefined;
-            	var j = undefined;
 
             	var attr = undefined;
 
@@ -52,24 +51,14 @@
             			clone.style[prop] = style[prop];
             		});
             		if (blackList && blackList.length) {
-            			for (j = blackList.length - 1; j >= 0; j--) {
-            				clone.removeAttribute(blackList[j]);
+            			for (i = blackList.length - 1; i >= 0; i--) {
+            				clone.removeAttribute(blackList[i]);
             			}
             		}
 
             		len = node.childNodes.length;
-            		if (blackList && blackList.length) {
-            			for (i = 0; i < len; i += 1) {
-            				var newNode = cloneNode(node.childNodes[i]);
-            				for (j = blackList.length - 1; j >= 0; j--) {
-            					newNode.removeAttribute(blackList[j]);
-            				}
-            				clone.appendChild(newNode);
-            			}
-            		} else {
-            			for (i = 0; i < len; i += 1) {
-            				clone.appendChild(cloneNode(node.childNodes[i]));
-            			}
+            		for (i = 0; i < len; i += 1) {
+            			clone.appendChild(cloneNode(node.childNodes[i]));
             		}
             	}
 
